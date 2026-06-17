@@ -1,0 +1,26 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(julia --project=. -e ' *)",
+      "Bash(timeout 90 julia --project=. -e ' *)",
+      "Bash(rm -f shot_menu.png shot_jogo.png shot_menu2.png /tmp/verify.jl)",
+      "Bash(ls *.png)",
+      "Bash(timeout 8 julia --project=. src/gui.jl)",
+      "Bash(timeout 120 julia --project=. -e ' *)",
+      "Bash(julia --version)",
+      "Bash(julia --project=. -e 'using Raylib; println\\(pathof\\(Raylib\\)\\)')",
+      "Bash(timeout 120 julia /tmp/solve.jl)",
+      "Bash(timeout 180 julia /tmp/solve.jl)",
+      "Bash(timeout 120 julia --project=. /tmp/shot.jl)",
+      "Bash(grep -iE \"screenshot taken|error|ok$\")",
+      "Bash(convert shot_jogo8.png -crop 130x150+575+295 -resize 400x shot_char.png)",
+      "Bash(convert shot_jogo.png -crop 110x150+550+360 -resize 360x shot_char2.png)",
+      "Bash(timeout 120 julia --project=. /tmp/drive.jl)",
+      "Bash(timeout 60 julia src/main.jl levels/level8.txt)",
+      "Bash(timeout 120 julia --project=. /tmp/shotfront.jl)",
+      "Bash(grep -iE \"screenshot taken successfully|error|ok$\")",
+      "Bash(rm -f shot_front.png)",
+      "Bash(rm -f shot_front.png shot_dir.png)"
+    ]
+  }
+}

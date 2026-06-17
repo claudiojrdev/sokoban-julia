@@ -29,6 +29,7 @@ sokoban-julia/
 ├── src/
 │   ├── Sokoban.jl   # núcleo PURO: tipos + regras do jogo (sem I/O)
 │   ├── gui.jl       # casca gráfica: janela Raylib, personagem vetorial, animações, menu
+│   ├── audio.jl     # casca de áudio: síntese PURA de efeitos + trilha (WAVs gerados)
 │   └── main.jl      # casca de terminal: loop recursivo + teclado/tela em ASCII
 ├── levels/          # mapas de texto (level1..level8), em notação clássica do Sokoban
 ├── Project.toml     # dependências (Raylib) do ambiente do projeto
@@ -121,8 +122,14 @@ Controles na janela:
 | **R** | reiniciar a fase |
 | **N** / **P** | próxima / fase anterior |
 | **M** / **Esc** | voltar ao menu |
+| **T** | ligar / desligar o som |
 | **F11** | alternar tela cheia / janela |
 | **Q** | sair do jogo |
+
+O jogo tem **efeitos sonoros** (passo, empurrão, desfazer, bloqueio, navegação,
+vitória) e uma **trilha sonora** em loop — tudo **sintetizado por procedimento**
+(não há arquivos de áudio no projeto): funções puras geram as amostras PCM e a
+casca grava WAVs temporários para a Raylib tocar.
 
 Ao limpar um setor, o HUD mostra *"SETOR LIBERADO!"* e a tela é tomada por
 **confete** comemorativo; ao concluir o último, *"FUGA COMPLETA! Julia escapou

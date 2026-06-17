@@ -19,6 +19,9 @@
 include("Sokoban.jl")
 using .Sokoban
 
+include("audio.jl")
+using .GameAudio
+
 import Raylib
 const RL = Raylib
 const B  = Raylib.Binding
@@ -352,6 +355,7 @@ function ler_entrada()::Entrada
         B.IsKeyPressed(B.KEY_R)                                  ? :reset :
         B.IsKeyPressed(B.KEY_N)                                  ? :next :
         B.IsKeyPressed(B.KEY_P)                                  ? :prev :
+        B.IsKeyPressed(B.KEY_T)                                  ? :mute :
         (B.IsKeyPressed(B.KEY_ENTER) || B.IsKeyPressed(B.KEY_SPACE)) ? :select :
         (B.IsKeyPressed(B.KEY_M) || B.IsKeyPressed(B.KEY_ESCAPE))    ? :menu :
         :none
@@ -478,7 +482,7 @@ function desenhar_jogo(app::App, lay::Layout, tw::Tween, facing::Symbol, t::Floa
     B.DrawRectangle(0, hud_y, lay.W, HUD_H, C_HUD_BG)
     B.DrawRectangle(0, hud_y, lay.W, 3, JL_PURPLE)
     B.DrawText("Fase $(c.idx)/$(length(c.fases)) - $(NOMES[c.idx])", 18, hud_y + 12, 22, C_HUD_TXT)
-    B.DrawText("WASD/setas mover   U desfazer   R reiniciar   N/P fase   M menu   F11 tela   Q sair",
+    B.DrawText("WASD/setas mover   U desfazer   R reiniciar   N/P fase   M menu   T som   F11 tela   Q sair",
                18, hud_y + 44, 16, C_DIM)
     B.DrawText("Empurroes: $(length(c.game.history) - 1)", 18, hud_y + 66, 16, C_DIM)
     if is_solved(c.game)
@@ -532,7 +536,7 @@ function desenhar_menu(app::App, lay::Layout, t::Float64)
         end
     end
 
-    texto_centro("Setas/mouse: escolher    Enter/clique: jogar    F11: tela cheia    Q: sair",
+    texto_centro("Setas/mouse: escolher    Enter/clique: jogar    T: som    F11: tela cheia    Q: sair",
                  W ÷ 2, H - 30, 16, C_DIM)
 end
 
@@ -562,15 +566,19 @@ function rodar(app0::App; max_frames=nothing, fullscreen=true)
     B.SetTargetFPS(60)
     fullscreen && entrar_fullscreen!()
 
+    audio = iniciar_audio()        # liga o som e a trilha (nothing se indisponível)
+
     # estado do laço (locais re-vinculados a cada frame — estilo fold funcional)
-    app       = app0
-    shown     = Sokoban.current(app0.camp.game)
-    shown_idx = -1
-    tw        = tween_parado()
-    facing    = :down
-    frame     = 0
+    app        = app0
+    shown      = Sokoban.current(app0.camp.game)
+    shown_idx  = -1
+    tw         = tween_parado()
+    facing     = :down
+    was_solved = false
+    frame      = 0
 
     while !B.WindowShouldClose()
+        atualizar_musica(audio)               # realimenta o buffer da trilha
         lay = calc_layout(maxcols, maxrows)
         ent = ler_entrada()
 
@@ -579,9 +587,24 @@ function rodar(app0::App; max_frames=nothing, fullscreen=true)
         elseif ent.acao === :fullscreen
             B.IsWindowFullscreen() ? B.ToggleFullscreen() : entrar_fullscreen!()
             ent = Entrada(:none, ent.click, ent.mx, ent.my)
+        elseif ent.acao === :mute
+            alternar_mudo(audio)
+            ent = Entrada(:none, ent.click, ent.mx, ent.my)
         end
 
+        ant = app                                 # estado anterior (p/ detectar eventos)
         app = atualizar(app, ent, lay.W, lay.H)   # fold funcional: App -> App
+
+        # --- efeitos sonoros derivados da transição de estado ---
+        if ant.tela == MENU && app.tela == MENU && app.cursor != ant.cursor
+            tocar(audio, :menu)                   # navegação no menu
+        elseif ant.tela == MENU && app.tela == JOGANDO
+            tocar(audio, :select)                 # entrou numa fase
+        elseif app.tela == JOGANDO &&
+               ent.acao in (:up, :down, :left, :right) &&
+               Sokoban.current(app.camp.game) === Sokoban.current(ant.camp.game)
+            tocar(audio, :deny)                   # tentou mover, mas bateu em parede/caixa
+        end
 
         # --- deriva a animação a partir da mudança de estado ---
         if app.tela == JOGANDO
@@ -590,9 +613,15 @@ function rodar(app0::App; max_frames=nothing, fullscreen=true)
                 shown = cur; shown_idx = app.camp.idx; tw = tween_parado(:down); facing = :down
             elseif cur !== shown                  # houve jogada: anima o passo
                 tw = derivar_tween(shown, cur, facing)
+                tocar(audio, tw.active ? (tw.haspush ? :push : :move) : :undo)
                 facing = tw.facing
                 shown = cur
             end
+
+            # vitória: dispara só na transição para "resolvido"
+            solved_now = is_solved(app.camp.game)
+            solved_now && !was_solved && tocar(audio, :win)
+            was_solved = solved_now
             if tw.active
                 tw = Tween(true, min(1.0, tw.t + B.GetFrameTime()/tw.dur), tw.dur,
                            tw.pf, tw.pt, tw.haspush, tw.bf, tw.bt, tw.facing)
@@ -600,6 +629,7 @@ function rodar(app0::App; max_frames=nothing, fullscreen=true)
             end
         else
             shown_idx = -1                        # ao voltar ao menu, re-sincroniza
+            was_solved = false
         end
 
         t = B.GetTime()
@@ -611,6 +641,7 @@ function rodar(app0::App; max_frames=nothing, fullscreen=true)
         frame += 1
         max_frames !== nothing && frame >= max_frames && break
     end
+    encerrar_audio(audio)
     B.CloseWindow()
     return app
 end

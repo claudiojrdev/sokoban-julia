@@ -20,7 +20,11 @@
       "Bash(timeout 120 julia --project=. /tmp/shotfront.jl)",
       "Bash(grep -iE \"screenshot taken successfully|error|ok$\")",
       "Bash(rm -f shot_front.png)",
-      "Bash(rm -f shot_front.png shot_dir.png)"
+      "Bash(rm -f shot_front.png shot_dir.png)",
+      "Bash(julia --project=. -e 'using Raylib; B=Raylib.Binding; for n in names\\(B; all=true\\); s=String\\(n\\); if occursin\\(r\"Audio|Sound|Music|Wave|Volume\", s\\); println\\(s\\); end; end')",
+      "Bash(timeout 60 julia --project=. -e ' *)",
+      "Bash(git add *)",
+      "Bash(git commit -m ' *)"
     ]
   }
 }
